@@ -35,6 +35,77 @@ The component interacts with other component via REST APIs as depicted in the fo
 
 <img src="./docs/media/TANGO_structure_v1.png" alt="TANGO Project Overview" width="800px"/>
 
+### AutoML <a name="automl"></a>
+
+TANGO 프레임워크는 전문가의 도움을 받지 않거나 최소한의 사용법을 익힘으로써 자동으로 신경망을 구성하고 학습하여 사용자의 디바이스에서 바로 사용할 수 있는 모델을 배포, 탑재하는 것을 목표로 한다. 이를 위해 데이터 준비와 신경망 모델 생성, 그리고 디바이스 최적화까지는 하나의 프레임워크에서 통제할 수 있도록 하였다.
+
+<img src="./docs/media/TANGO_AutoML.png" alt="TANGO AutoML pipeline" width="800px"/>
+
+***
+
+데이터 준비는 크게 두 가지 프로세스로 구성된다. 먼저 task에 맞는 다양한 상황에서의 이미지(raw data)를 직접 찍거나 모아야 한다. 그 다음 신경망에서 학습 가능한 형태로 주석을 달아 주어야 한다. 후자의 과정은 매우 노동 집약적이며 많은 인력과 시간이 소요된다. TANGO의 레이블링 도구는 raw data에 대해 annotation을 쉽게 수행하는 도구이다. 사용자는 로컬 데이터를 하나씩 로딩하고 task에 맞게 class labeling, bounding box annotation, polygon annotation 등을 수행한 후 저장할 수 있다.
+
+<img src="./docs/media/TANGO_labeling.png" alt="TANGO labeling" width="800px"/>
+
+***
+
+신경망 모델 생성은 TANGO 프레임워크의 핵심 프로세스이며, 숙련된 AI 전문가들이 많은 시행착오를 겪으면서 수행하는 일이다. TANGO 프레임워크에서는 이를 자동으로 하기 위한 가이드라인을 제공한다. 먼저 기존의 잘 동작하는 것으로 알려진 신경망 중 하나의 추천하는 base model selector를 통해 기반 신경망을 추출한다. 이후 AutoNN에서는 NAS, HPO 등 자동화 기법을 활용하여 적절한 신경망 구성을 찾아낸다. 이는 최종 모델에 대한 재학습까지 포함한다.
+
+<img src="./docs/media/TANGO_bms_autonn.png" alt="TANGO bms & autonn" width="800px"/>
+
+
+#### BMS (Base Model Select)
+
+NAS, HPO와 같은 자동화 기법을 적용하기 전에 그 검색 공간을 줄여주거나 특정한 신경망의 variation으로 한정시켜 주는 것은 신경망 자동 생성의 효율성 측면에서 매우 중요하다. TANGO 프레임워크에서는 이를 Base Model Select로 명명하고 기존의 잘 알려진 신경망 중 적절한 신경망을 추천하는 역할을 담당하도록 하였다.
+
+
+#### NAS (Network Architecture Search)
+
+최적의 신경망을 찾아내는 일은 오랜 기간 AI 전문가의 영역이었다. 이는 현재도 마찬가지이지만, 어느 정도 사용하는 연산(operation)과 레이어(layer), 블록(block) 혹은 셀(cell) 기술이 성숙되었기 때문에 이들을 조합하여 더 좋은 구조를 찾아내는 것은 단순한 반복 작업의 영역이 될 수 있다. 따라서 새로운 연산, 레이어, 블록, 셀을 찾아내기 보다는 기존의 연산, 레이어, 블록, 셀을 조합하거나 그 인자(arguments)를 바꿈으로써 더 좋은 신경망 구조를 찾아내는 일을 컴퓨터에게 맡긴 것이 NAS 기술이다. TANGO에서 NAS는 BMS에서 추천한 기반 신경망을 바탕으로 NAS를 통해 최적의 사용자 맞춤 신경망을 도출하는 과정이라고 볼 수 있다.
+
+#### HPO (Hyper-Parameter Optimization)
+
+신경망 학습은 많은 부분 자동화되어 있지만 여전히 전문가의 설정이 필요한 변수들이 많이 있다. 더구나 이들 변수의 설정은 학습을 잘 되게 하는데 매우 큰 영향을 끼치기 때문에 동일한 신경망 구조에 대해서도 전혀 다른 정확도 결과를 보일 수 있다. 하이퍼파라메터의 예로는 optimzer, weight decay, learning rate, warmup epochs, input size, early stopping, augmentation 등이 있다. 따라서 TANGO에서 HPO는 NAS가 끝난 후 최적 모델에 대해 최고의 성능을 내기 위한 학습 설정 변수를 정하는 과정이라고 볼 수 있다.
+
+***
+
+사용자는 신경망 추론에 사용할 디바이스를 지정할 수 있다. 디바이스별로 다른 가속화 엔진과 가용 자원 때문에 AutoNN에서 출력된 신경망 모델을 곧바로 배포/탑재하기 어려울 수 있다. 따라서 전주기 AutoML을 실현하기 위해 디바이스에 배포/탑재하여 동작할 수 있도록 도와주는 도구가 필요하다. 디바이스의 환경에 따라 직접 image build를 통해 네트워크로 배포할 수 있는 방식과 필수 라이브러리와 전/후처리 코드를 포함한 실행 코드르를 압축 파일로 만들어 사용자가 디바이스에 탑재하여 풀어 쓰는 방식을 제공하고 있다.
+
+<img src="./docs/media/TANGO_deplyment.png" alt="TANGO deploy" width="800px"/>
+
+### Object Detection Neural Networks <a name="odnn"></a>
+
+TANGO 프레임워크에서는 먼저 객체 검출 신경망의 자동 생성을 지원하도록 하였다. 객체 검출 신경망은 보통 백본, 넥, 헤드의 구성으로 이루어지며 각각 클래스(객체)에 대한 특징 추출, 객체의 위치를 잘 예측하기 위한 다중 크기의 특징 맵 병합, 그리고 어떤 객체가 어디에 위치하고 있는지 예측하는 역할을 담당하고 있다.
+
+<img src="./docs/media/object_detection_network.png" alt="object detection network" width="800px"/>
+
+백본과 넥의 경우, 사용자가 추론에 쓰려는 디바이스의 한계와 검출하고자 하는 객체가 무엇인가에 따라 알맞은 모델이 다를 수 있다. 이를 자동으로 찾아내기 위하여 TANGO 프레임워크에서는 각각 Backbone NAS와 Neck NAS를 수행한다.
+헤드의 경우, 실시간 객체 검출 신경망에서 주로 사용하는 YOLO 방식의 헤드를 사용하도록 하였다. 이 방식은 1-stage object detection에서 가장 성공적인 방식으로 알려져 있다. 현재 TANGO 프레임워크에서는 Backbone NAS와 Neck NAS를 선택하여 사용할 수 있도록 구성하였다.
+
+#### Backbone NAS
+
+TANGO 프레임워크가 지향하는 타겟 디바이스 맞춤형 백본을 찾기 위해 신경망 내 연산자별 지연시간 측정 기능을 모듈화하고 이를 기반으로 탐색 알고리즘의 복잡도 및 탐색 시간을 최소화하였다. 효율적인 다중 스케일 정보 추출을 위해 진화 알고리즘 기반의 신경망 구조 탐색 전략을 사용하여 weight-sharing supernet 학습을 수행함으로써 백본 신경망을 출력할 수 있도록 하였다.
+
+<img src="./docs/media/backbone_nas.png" alt="backbone_nas" width="800px"/>
+
+***
+
+#### Neck NAS
+
+Neck NAS에서는 object detection 신경망에 특화된 Neck 영역의 NAS를 수행함으로써 객체 위치를 좀 더 정확히 예측할 수 있는 신경망을 찾기 위한 모듈이다. 그 방법 중 하나로서 YOLO의 FPN+PAN 구조를 기반으로 하여 블록 단위 검색을 수행하였다.
+
+<img src="./docs/media/ku_neck_nas.png" alt="ku_neck_nas" width="800px"/>
+
+블록 단위의 탐색 블록을 정의한 위의 예시와 다르게, Neck 구조 자체에 대한 검색을 수행할 수도 있다. 이를 위해 YOLOv5의 Neck을 기반으로 Super-Neck을 만들어 어떤 연결이 가장 좋은 성능을 보이는지 탐색을 수행하였다.
+
+<img src="./docs/media/etri_superneck.png" alt="etri_superneck" width="800px"/>
+
+### No-Code <a name="nocode"></a>
+
+TANGO 프레임워크는 전문적인 지식이 없는 사용자도 자신만의 신경망 모델을 만들고 사용할 수 있도록 돕는 것을 목표로 한다. 이를 위해 프로젝트 매니저와 신경망 시각화 도구와 같이 사용자가 코드 작성 없이 사용할 수 있는 환경을 제공한다.
+
+<img src="./docs/media/project_mgr.png" alt="project_mgr" width="800px"/>
+
 ----
 
 ## Source Tree Structure <a name="source_tree"></a>
