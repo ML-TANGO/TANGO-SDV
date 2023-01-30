@@ -71,7 +71,7 @@ NAS, HPO와 같은 자동화 기법을 적용하기 전에 그 검색 공간을 
 
 사용자는 신경망 추론에 사용할 디바이스를 지정할 수 있다. 디바이스별로 다른 가속화 엔진과 가용 자원 때문에 AutoNN에서 출력된 신경망 모델을 곧바로 배포/탑재하기 어려울 수 있다. 따라서 전주기 AutoML을 실현하기 위해 디바이스에 배포/탑재하여 동작할 수 있도록 도와주는 도구가 필요하다. 디바이스의 환경에 따라 직접 image build를 통해 네트워크로 배포할 수 있는 방식과 필수 라이브러리와 전/후처리 코드를 포함한 실행 코드르를 압축 파일로 만들어 사용자가 디바이스에 탑재하여 풀어 쓰는 방식을 제공하고 있다.
 
-<img src="./docs/media/TANGO_deplyment.png" alt="TANGO deploy" width="800px"/>
+<img src="./docs/media/TANGO_deployment.png" alt="TANGO deploy" width="800px"/>
 
 ### Object Detection Neural Networks <a name="odnn"></a>
 
