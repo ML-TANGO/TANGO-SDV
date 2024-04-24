@@ -30,7 +30,7 @@
       </v-card>
       <v-btn
         @click="open = !open"
-        v-if="project.task_type === TaskType.CLASSIFICATION && projectInfo?.container !== ContainerName.BMS"
+        v-if="projectInfo?.container !== ContainerName.BMS"
         style="background-color: #fff"
         class="ml-1 elevation-0"
       >
@@ -45,12 +45,7 @@
           Close VISUALIZATION
         </div>
       </v-btn>
-      <v-banner
-        v-model="open"
-        style="padding: 0px !important"
-        class="custom"
-        v-if="project.task_type === TaskType.CLASSIFICATION"
-      >
+      <v-banner v-model="open" style="padding: 0px !important" class="custom">
         <v-card style="height: 1080px; overflow: none" class="mt-5">
           <iframe :src="HongIKVis2Code" title="내용" width="100%" height="100%"></iframe>
         </v-card>

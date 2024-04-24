@@ -150,7 +150,13 @@ export default {
 
       const workflow =
         this.project.task_type === TaskType.DETECTION
-          ? [ContainerName.BMS, ContainerName.AUTO_NN, ContainerName.CODE_GEN, ContainerName.IMAGE_DEPLOY]
+          ? [
+              ContainerName.BMS,
+              ContainerName.VISUALIZATION,
+              ContainerName.AUTO_NN,
+              ContainerName.CODE_GEN,
+              ContainerName.IMAGE_DEPLOY
+            ]
           : [
               ContainerName.BMS,
               ContainerName.VISUALIZATION,
