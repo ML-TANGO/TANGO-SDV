@@ -289,7 +289,7 @@ def create_basemodel_yaml(yaml_path, userid, project_id, manual_select=None):
     print(f'{PREFIX} SELECTED MODEL: {model_p}, MODEL SIZE: {model_size_p}')
 
     if task == 'classification':
-        source_path = f'basemodel_yaml/{model}/resnet50.json'
+        source_path = f'basemodel_yaml/{model}/{model}{model_size}.json'
         target_path = f'/shared/common/{userid}/{project_id}/basemodel.json'
         shutil.copy(source_path, target_path)
         print(f'{PREFIX} JSON file is also created in addition to yaml file.')
