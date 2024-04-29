@@ -46,5 +46,5 @@ backbone:
 
 head:
   [[-1, 1, nn.AdaptiveAvgPool2d, [1]], #37
-   [-1, 1, nn.Linear, [2048, nc, True]], #38
+   [-1, 1, nn.Linear, [nc, True]], #38
   ]
