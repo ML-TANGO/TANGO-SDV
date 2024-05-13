@@ -7,6 +7,7 @@ import string
 from time import sleep
 from datetime import datetime
 import torch
+import torch.nn as nn
 import requests
 from django.core import serializers
 import json, yaml
@@ -57,6 +58,8 @@ TORCH_NN_MODULES =  {   'Conv2d', 'ConvTranspose2d',
                         'MSELoss', 'CrossEntropyLoss', 'BCELoss',
                         'Upsample'
                     }
+HEAD_MODULES = { 'Classify', 'Detect', 'IDetect', 'IAuxDetect', 'IKeypoint',
+                 'IBin', 'Segment', 'Pose'}
 
 @api_view(['GET', 'POST', 'DELETE', 'UPDATE'])
 # pylint: disable = invalid-name, inconsistent-return-statements
@@ -187,74 +190,120 @@ def pthlist(request):
             yaml_data['backbone'] = []
             yaml_data['head'] = []
 
-            # sort the node and re-order node_order_list
-            for n in edge_next_list:
-                if n not in edge_prior_list:
-                    # this is the last node
-                    last_node = n
-            for p in edge_prior_list:
-                if p not in edge_next_list:
-                    # this is the first node
-                    first_node = p
+            # sort the node and re-order node_order_list -------------------------------------------------------------->
+            # TODO: buggy codes here... needs to solve this later on
+            # for n in edge_next_list:
+            #     if n not in edge_prior_list:
+            #         # this is the last node
+            #         last_node = n
+            # for p in edge_prior_list:
+            #     if p not in edge_next_list:
+            #         # this is the first node
+            #         first_node = p
 
-            print(f"first node = #{first_node}, last node = #{last_node}")
-            print('-'*50)
-            print(f"node[0] = #{first_node}")
-            print('-'*50)
+            # print(f"first node = #{first_node}, last node = #{last_node}")
+            # print('-'*50)
+            # print(f"node[0] = #{first_node}")
+            # print('-'*50)
 
-            total_node = len(node_order_list)
-            nodes_order = [0 for i in range(total_node)]
-            nodes_order[0] = first_node
-            # nodes_order[-1] = last_node
+            # total_node = len(node_order_list)
+            # nodes_order = [0 for i in range(total_node)]
+            # nodes_order[0] = first_node
+            # # nodes_order[-1] = last_node
 
-            reserved_nodes = []
-            for i in range(total_node):
-                # print(f" prior node = {nodes_order[i]}")
-                next_nodes = []
-                # print(" look up the edge prior list...")
-                for index, p in enumerate(edge_prior_list):
-                    # print(f"  #{index}: {p}")
-                    if p == nodes_order[i]:
-                        next_nodes.append(edge_next_list[index])
-                # print(f" next nodes = {next_nodes}")
+            # reserved_nodes = []
+            # for i in range(total_node):
+            #     print(f" prior node = {nodes_order[i]}")
+            #     next_nodes = []
+            #     print(" look up the edge prior list...")
+            #     for index, p in enumerate(edge_prior_list):
+            #         if p == nodes_order[i]:
+            #             # print(f"  edge-#{index}: prior node={p}")
+            #             next_nodes.append(edge_next_list[index])
+            #     print(f" next nodes = {next_nodes}")
 
-                if len(next_nodes) == 0:
-                    if i+1 == total_node:
-                        print(" this is the last node")
-                    else:
-                        if len(reserved_nodes) == 0:
-                            print(" error: this is not the last node but does not have any connection from output port")
-                        else:
-                            next_node = reserved_nodes.pop(reserved_nodes.index(min(reserved_nodes)))
-                else:
-                    if len(next_nodes) > 1:
-                        next_node = next_nodes.pop(next_nodes.index(min(next_nodes)))
-                        reserved_nodes = reserved_nodes + next_nodes
-                    else:
-                        next_node = next_nodes[0]
-                if next_node in nodes_order:
-                    print(f" warning: this node (#{next_node}) is already allocated in nodes_order, ignored..")
-                else:
-                    print('-'*50)
-                    print(f"node[{i+1}] = #{next_node}")
-                    print('-'*50)
-                    nodes_order[i+1] = next_node
-            if len(reserved_nodes) > 0:
-                print(f" error: reserved nodes left...{reserved_nodes}")
-            print(nodes_order)
+            #     if not next_nodes:
+            #         # 3 possible cases when next nodes are empty
+            #         # - the last node
+            #         # - the end node of a branch
+            #         # - error(not the last node, but no reserved nodes)
+            #         if i+1 == total_node:
+            #             print(" this is the last node")
+            #         else:
+            #             if not reserved_nodes:
+            #                 print(f" error: this is not the last node,"
+            #                       f" but does not have any connection from output port")
+            #             else:
+            #                 # not the last node but just a branch end,
+            #                 # search other branch from reserved nodes
+            #                 next_node = reserved_nodes.pop(reserved_nodes.index(min(reserved_nodes)))
+            #     else:
+            #         if len(next_nodes) > 1:
+            #             # 2 or more next nodes : this node must be a branch point
+            #             next_node = next_nodes.pop(next_nodes.index(min(next_nodes)))
+            #             reserved_nodes = reserved_nodes + next_nodes
+            #         else:
+            #             # only 1 next node : simple connection
+            #             next_node = next_nodes[0]
+            #     if next_node in nodes_order:
+            #         print(f" warning: this node (#{next_node}) is already allocated in nodes_order, ignored..")
+            #     else:
+            #         print('-'*50)
+            #         print(f"node[{i+1}] = #{next_node}")
+            #         print('-'*50)
+            #         nodes_order[i+1] = next_node
+            # if len(reserved_nodes) > 0:
+            #     print(f" error: reserved nodes left...{reserved_nodes}")
 
-            for yaml_index, node_index in enumerate(nodes_order):
-                json_index = node_order_list.index(node_index)
+            # print(nodes_order)
+            # sort the node and re-order node_order_list <--------------------------------------------------------------
+
+            # for yaml_index, node_index in enumerate(nodes_order):
+            #     json_index = node_order_list.index(node_index)
+            for yaml_index, node_index in enumerate(node_order_list):
+                json_index = node_index - 1
+
                 # YOLO-style yaml module description
                 # [from, number, module, args]
-
                 number_ = 1                             # repetition
                 module_ = node_layer_list[json_index]   # pytorch nn module
 
                 # module & its arguements
-                str_params = "{"+node_parameters_list[json_index]+"}"
-                str_params = str_params.replace('\n', ',')
-                params_ = eval(str_params)
+                # str_params = "{"+node_parameters_list[json_index]+"}"
+                # str_params = str_params.replace('\n', ',')
+                # params_ = eval(str_params)
+                str_params = node_parameters_list[json_index]
+
+                params_ = {}
+                str_param = str_params.split('\n')
+                for p in str_param:
+                    try:
+                        eval_params_ = eval("{"+p+"}")
+                    except:
+                        # print(p)
+                        p_key, p_value = p.split(': ') # [0] key [1] value
+                        if 'LeakyReLU' in p_value:
+                            p_value = f"nn.{p_value}"
+                            eval_params_ = eval("{"+p_key+": "+p_value+"}")
+                        elif isinstance(p_value, str):
+                            # print(f"---{p_key}---{p_value}---")
+                            p_key = p_key.strip()
+                            p_value = p_value.strip()
+                            # print(f"---{p_key}---{p_value}---")
+                            p_key = p_key.replace("'","")
+                            p_value = p_value.replace("'", "")
+                            # print(f"---{p_key}---{p_value}---")
+                            eval_params_[p_key.strip("'")] = p_value
+                        else:
+                            print("forced to convert string-to-dictionary")
+                            p_key.strip()
+                            p_value.strip()
+                            p_key = p_key.replace("'","")
+                            p_value = p_value.replace("'", "")
+                            eval_params_[p_key] = p_value
+                    finally:
+                        params_.update(eval_params_)
+
                 args_ = []
                 if module_ == 'Conv2d':
                     ch_ = params_['out_channels']
@@ -283,6 +332,10 @@ def pthlist(request):
                         args_ = []
                     else:
                         args_ = [k_]
+                elif module_ == 'SP':
+                    k_ = params_['kernel_size']
+                    s_ = params_['stride']
+                    args_ = [k_, s_]
                 elif module_ == 'ConstantPad2d':
                     p_ = params_['padding']
                     v_ = params_['value']
@@ -328,11 +381,11 @@ def pthlist(request):
                     w_ = params_['base_width']
                     norm_ = params_['norm_layer']
                     args_ = [ch_, s_, downsample_, g_, w_, d_, norm_]
-                elif moduel_ == 'Conv':
+                elif module_ == 'Conv':
                     ch_ = params_['out_channels']
                     k_ = params_['kernel_size']
                     s_ = params_['stride']
-                    p_ = params_['padding']
+                    p_ = params_['pad']
                     g_ = params_['groups']
                     a_ = params_['act']
                     args_ = [ch_, k_, s_, p_, g_, a_]
@@ -363,6 +416,9 @@ def pthlist(request):
                 else:
                     print(f"{module_} is not supported yet")
                     continue
+                # yaml_index: 0, 1, 2, ...
+                # node_index: 1, 2, 3, ...
+                # json_index: 1, 2, 3, ...
                 print(f"layer #{yaml_index} (node_index #{node_index}; json_index #{json_index}) : {module_}")
 
                 # from
@@ -375,25 +431,36 @@ def pthlist(request):
                     from_ = -1 # this has to be the first layer
                     assert yaml_index == 0, f'it must be the first layer but index is {yaml_index}'
                 elif len(f_) == 1:
-                    x = nodes_order.index(f_[0])
-                    if x == yaml_index-1:
-                        from_ = -1
-                    else:
-                        from_ = x
+                    # x = nodes_order.index(f_[0])
+                    from_ = f_[0] - 1 - yaml_index # node_index = yaml_index + 1
+                    if from_ < -5:
+                        # too far to calcaulate prior node, write explicit node number instead.
+                        from_ = f_[0] - 1
                 else:
-                    f_reorder = []
+                    # 2 or more inputs
+                    f_multiple = []
                     for f_element in f_:
-                        x = nodes_order.index(f_element)
-                        if x == nodes_order[yaml_index-1]:
-                            x = -1
-                        f_reorder.append(x)
-                    from_ = f_reorder
+                        # x = nodes_order.index(f_element)
+                        # if x == nodes_order[yaml_index-1]:
+                        #     x = -1
+                        x = f_element - 1 - yaml_index
+                        if x < -5:
+                            x = f_element - 1
+                        f_multiple.append(x)
+                    if all(num < 0 for num in f_multiple):
+                        f_multiple.sort(reverse=True)
+                    else:
+                        f_multiple.sort(reverse=False)
+                    from_ = f_multiple
                 print(f"from : {from_}")
 
                 if module_ in TORCH_NN_MODULES:
                     module_ = f"nn.{module_}"
                 layer_ = [from_, number_, module_, args_]
-                yaml_data['backbone'].append(layer_)
+                if module_ in HEAD_MODULES:
+                    yaml_data['head'].append(layer_)
+                else:
+                    yaml_data['backbone'].append(layer_)
 
             # print yaml data
             # print('-'*100)
@@ -564,12 +631,12 @@ def startList(request):
             serializer = StartSerializer(data={'msg': 'started',
                                                'user_id': user_id,
                                                'project_id': project_id})
-            print(f"1. get user id and project id from rest api")
+            print(f"⚡ Get user id {user_id} and project id {project_id} from rest api")
 
             if serializer.is_valid():
                 serializer.save()
                 try:
-                    print(f"2. clear nodes & edges")
+                    print(f"🧹 Clear all nodes & edges")
                     nodes = Node.objects.all()
                     nodes.delete()
 
@@ -585,7 +652,7 @@ def startList(request):
                         with open(yaml_path) as f:
                             basemodel_yaml = yaml.load(f, Loader=yaml.SafeLoader)
 
-                        print(f"3. load yaml file {yaml_path}")
+                        print(f"🚛 Load yaml file from {yaml_path}")
 
                         # 'node' & 'edge' parsing
                         # import torch, torchvision.models.resnet
@@ -593,15 +660,23 @@ def startList(request):
                         ch = [basemodel_yaml.get('ch', 3)] # default channel = 3 (RGB)
                         layers, lines, c2, edgeid = [], [], ch[-1], 0
                         for i, (f, n, m, args) in enumerate(basemodel_yaml['backbone'] + basemodel_yaml['head']):  # from, number, module, args
-                            print(f"4. #{i} ({f}, {n}, {m}, {args})")
+                            print(f"💧 Read yaml layer-{i} : ({f}, {n}, {m}, {args})")
                             # m = eval(m) if isinstance(m, str) else m  # eval strings
                             node = OrderedDict()
                             for j, a in enumerate(args):
                                 try:
                                     args[j] = eval(a) if isinstance(a, str) else a  # eval strings
-                                except:
+                                except Exception as e:
                                     if a == 'nc':
                                         args[j] = nc
+                                    elif a == 'anchors':
+                                        args[j] = basemodel_yaml.get('anchors', ())
+                                    elif isinstance(a, nn.Module):
+                                        # for example, nn.LeakeyReLU(0.1)
+                                        args[j] = a
+                                    elif a in ('nearest', 'linear', 'bilinear', 'bicubic', 'trilinear'):
+                                        # list of upsampling mode
+                                        args[j] = a
                                     else:
                                         print(f"unsupported arguements: {a}...ignored.")
 
@@ -792,18 +867,23 @@ def startList(request):
                                     f"'start_dim': {s_dim} \n "
                                     f"'end_dim': {e_dim}"
                                 )
-                            elif m == 'nn.Unsample':
+                            elif m == 'nn.Upsample':
                                 c1 = ch[f]
                                 c2 = c1
                                 size = args[0]
                                 scale = args[1]
-                                mode = args[2]
-                                align = args[3]
-                                recompute = args[4]
+                                mode = 'nearest'
+                                align, recompute = False, False
+                                if len(args)>2:
+                                    mode = args[2]
+                                if len(args)>3:
+                                    align = args[3]
+                                if len(args)>4:
+                                    recompute = args[4]
                                 params = (
                                     f"'size': {size} \n "
-                                    f"'scale_factor': {scale} \n"
-                                    f"'mode': {mode} \n"
+                                    f"'scale_factor': {scale} \n "
+                                    f"'mode': {mode} \n "
                                     f"'align_corners': {align} \n "
                                     f"'recompute_scale_factor': {recompute}"
                                 )
@@ -844,7 +924,7 @@ def startList(request):
                                     f"'out_channels': {c2} \n "
                                     f"'kernel_size': {k} \n "
                                     f"'stride': {s} \n "
-                                    f"'padding': {p} \n "
+                                    f"'pad': {p} \n "
                                     f"'groups': {g} \n "
                                     f"'act': {a}"
                                 )
@@ -860,12 +940,12 @@ def startList(request):
                                     else:
                                         print("warning! only channel-wise concat is supported.")
                                         c2 = max(c1) # TODO: should be treated more elegantly..
-                                prarms = (
+                                params = (
                                     f"'dim': {d}"
                                 )
                             elif m == 'Shortcut':
                                 d = args[0]
-                                if not isinstance(f, list):
+                                if isinstance(f, int):
                                     c1 = ch[f]
                                     c2 = c1
                                 else:
@@ -874,7 +954,7 @@ def startList(request):
                                         if ch[x] != c1:
                                             print("warning! all input must have the same dimension")
                                     c2 = c1
-                                prarms = (
+                                params = (
                                     f"'dim': {d}"
                                 )
                             elif m == 'DownC':
@@ -889,7 +969,7 @@ def startList(request):
                                     f"'in_channels': {c1} \n "
                                     f"'out_channels': {c2} \n "
                                     f"'n': {n} \n "
-                                    f"'kernel_size': ({k}, {k})"
+                                    f"'kernel_size': {k}"
                                 )
                             elif m == 'SPPCSPC':
                                 c1 = ch[f]
@@ -932,31 +1012,36 @@ def startList(request):
                                 elif len(args) == 1:
                                     k = args[0]
                                 params = (
-                                    f"'kernel_size': ({k}, {k}) \n "
-                                    f"'stride': ({s}, {s})"
+                                    f"'kernel_size': {k} \n "
+                                    f"'stride': {s}"
                                 )
                             elif m == 'IDetect':
+                                c2 = None
                                 nc = args[0]
                                 if isinstance(f, list):
-                                    anchors = len(f)
+                                    nl = len(f) # number of detection layers
                                     c1 = [ch[x] for x in f]
                                 else:
                                     print("warning! detection module needs two or more inputs")
-                                    anchors = 1
+                                    nl = 1
                                     c1 = [ch[f]]
+                                anchors = [] # viz2code needs to store this
                                 if len(args)>1:
                                     if isinstance(args[1], list):
-                                        anchors = len(args[1])
-                                    else:
+                                        # anchors = len(args[1])
+                                        if len(args[1]) != nl:
+                                            print(f"warning! the number of detection layer is {nl},"
+                                                  f" but anchors is for {len(args[1])} layers.")
                                         anchors = args[1]
+                                    else:
+                                        anchors = [list(range(args[1]*2))] * nl
+                                ch_ = []
                                 if len(args)>2:
-                                    ch = args[2]
-                                else:
-                                    ch = ()
+                                    ch_ = args[2]
                                 params = (
-                                    f"'nc: {nc} \n "
-                                    f"'anchros: {anchros} \n "
-                                    f"'ch': {ch}"
+                                    f"'nc': {nc} \n "
+                                    f"'anchors': {anchors} \n "
+                                    f"'ch': {ch_}"
                                 )
                             else:
                                 print(f"unsupported module... {m}")
@@ -971,7 +1056,7 @@ def startList(request):
                             node['parameters'] = params
                             layers.append(node)
 
-                            print(f"5. add node #{node['order']} : {node['layer']}")
+                            print(f"🚩 Create a node #{node['order']} : {node['layer']} - args \n {node['parameters']}")
 
                             if i == 0:
                                 ch = []
@@ -980,42 +1065,43 @@ def startList(request):
                             # 'edge' parsing
                             if i == 0:
                                 continue
-                            edge = OrderedDict()
+
                             prior = f if isinstance(f, list) else [f]
                             for p in prior:
-                                if p == -1:
-                                    p = i
+                                edge = OrderedDict()
+                                if p < 0:
+                                    p += (i+1)
                                 edgeid = edgeid + 1
                                 edge['id'] = edgeid
                                 edge['prior'] = p
                                 edge['next'] = i + 1
                                 lines.append(edge)
 
-                                print(f"6. add edge #{edge['id']} {edge['prior']}->{edge['next']}")
+                                print(f"  ※ Create an edge #{edge['id']} : {edge['prior']}->{edge['next']}")
 
                         # json formatting for 'node' & 'edge'
                         json_data = OrderedDict()
                         json_data['node'] = layers
                         json_data['edge'] = lines
-                        print(f"7. generate json data")
+                        print(f"🚛 Generate json data")
                         print(json.dumps(json_data, ensure_ascii=False, indent="\t"))
 
                         # save
                         for i in json_data.get('node'):
                             serializer = NodeSerializer(data=i)
                             if serializer.is_valid():
-                                print(f"8-1. save nodes #{i['order']}")
                                 serializer.save()
                         for j in json_data.get('edge'):
                             serializer = EdgeSerializer(data=j)
                             if serializer.is_valid():
-                                print(f"8-2. save edges #{j['id']}")
                                 serializer.save()
+                        print(f"🏳‍🌈 Save Nodes and Edges")
+
                     elif os.path.isfile(json_path):
                         # json import
                         # copyfile(json_path, my_json_path)
                         # with open("./frontend/src/resnet50.json", "r", encoding="utf-8-sig") as f:
-                        print(f"3. load json file {json_path}")
+                        print(f"🚛 Load json file from {json_path}")
                         with open(json_path, "r", encoding="utf-8-sig") as f:
                             data = json.load(f)
                             for i in data.get('node'):
@@ -1026,8 +1112,9 @@ def startList(request):
                                 serializer = EdgeSerializer(data=j)
                                 if serializer.is_valid():
                                     serializer.save()
+                        print(f"🏳‍🌈 Save Nodes and Edges")
                     else:
-                        print(f"3. not found basemode.yaml neither basemodel.json")
+                        print(f"not found basemode.yaml neither basemodel.json")
                         return Response("error", status=404, content_type="text/plain")
                 except Exception as ex:
                     print(ex)
@@ -1363,19 +1450,54 @@ class RunningView(viewsets.ModelViewSet):
 
 def make_branches(get_node, get_edge):
     '''
-    test branches
+    make a graph with nodes and edges and export pytorch model from the graph
     '''
     graph = CGraph()
     self_binder = CPyBinder()
     for node in get_node:
         # pylint: disable-msg=bad-option-value, consider-using-f-string
         params_string = "{parameters}". \
-            format(**node.__dict__).replace("\n", ',')
-        print(f"{params_string}")
+            format(**node.__dict__).replace("\n", '>')
+        # print(f"{params_string}")
+
+        # tenace -------------------------------------------------------------->
+        # workaround to avoid eval() error when a value is string or nn.Module
+        params_dict = {}
+        params_ = params_string.split('>')
+        for p in params_:
+            try:
+                eval_params_ = eval("{"+p+"}")
+            except:
+                # print(p)
+                p_key, p_value = p.split(': ') # [0] key [1] value
+                if 'LeakyReLU' in p_value:
+                    p_value = f"nn.{p_value}"
+                    eval_params_ = eval("{"+p_key+": "+p_value+"}")
+                elif isinstance(p_value, str):
+                    # print(f"---{p_key}---{p_value}---")
+                    p_key = p_key.strip()
+                    p_value = p_value.strip()
+                    # print(f"---{p_key}---{p_value}---")
+                    p_key = p_key.replace("'","")
+                    p_value = p_value.replace("'", "")
+                    # print(f"---{p_key}---{p_value}---")
+                    eval_params_[p_key.strip("'")] = p_value
+                else:
+                    print("forced to convert string-to-dictionary")
+                    p_key.strip()
+                    p_value.strip()
+                    p_key = p_key.replace("'","")
+                    p_value = p_value.replace("'", "")
+                    eval_params_[p_key] = p_value
+            finally:
+                params_dict.update(eval_params_)
+        # print(f"{params_dict}")
+        # tenace <--------------------------------------------------------------
+
         # pylint: disable-msg=bad-option-value, eval-used
         graph.addnode(CNode("{order}".format(**node.__dict__),
                             type_="{layer}".format(**node.__dict__),
-                            params=eval("{" + params_string + "}")))
+                            params=params_dict)) # params=eval("{" + params_string + "}")))
     for edge in get_edge:
         # pylint: disable-msg=bad-option-value, consider-using-f-string
         graph.addedge(CEdge("{prior}".format(**edge.__dict__),

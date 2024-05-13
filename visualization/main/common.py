@@ -19,6 +19,18 @@ class Concat(nn.Module):
     def forward(self, x):
         return torch.cat(x, self.d)
 
+
+# Sum-based modules
+class Shortcut(nn.Module):
+    def __init__(self, dimension=0):
+        super(Shortcut, self).__init__()
+        self.d = dimension
+
+    def forward(self, x):
+        return x[0]+x[1]
+
+
+# SPP-based modules
 class DownC(nn.Module):
     # Spatial pyramid pooling layer used in YOLOv3-SPP
     def __init__(self, c1, c2, n=1, k=2):
@@ -74,8 +86,12 @@ class SP(nn.Module):
 # Convolution-based modules
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
+    # print(f"Conv autopad input k={k}, p={p}, type(p)={type(p)}")
+    if isinstance(p, str):
+        p = eval(p)
     if p is None:
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+    # print(f"autopad result p={p}")
     return p
 
 class Conv(nn.Module):
@@ -90,14 +106,6 @@ class Conv(nn.Module):
         return self.act(self.bn(self.conv(x)))
 
 
-# Sum-based modules
-class Shortcut(nn.Module):
-    def __init__(self, dimension=0):
-        super(Shortcut, self).__init__()
-        self.d = dimension
-
-    def forward(self, x):
-        return x[0]+x[1]
 
 # Head modules
 class Classify(nn.Module):
@@ -111,6 +119,30 @@ class Classify(nn.Module):
     def forward(self, x):
         z = torch.cat([self.aap(y) for y in (x if isinstance(x, list) else [x])], 1)  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
+
+class ImplicitA(nn.Module):
+    def __init__(self, channel, mean=0., std=.02):
+        super(ImplicitA, self).__init__()
+        self.channel = channel
+        self.mean = mean
+        self.std = std
+        self.implicit = nn.Parameter(torch.zeros(1, channel, 1, 1))
+        nn.init.normal_(self.implicit, mean=self.mean, std=self.std)
+
+    def forward(self, x):
+        return self.implicit + x
+
+class ImplicitM(nn.Module):
+    def __init__(self, channel, mean=1., std=.02):
+        super(ImplicitM, self).__init__()
+        self.channel = channel
+        self.mean = mean
+        self.std = std
+        self.implicit = nn.Parameter(torch.ones(1, channel, 1, 1))
+        nn.init.normal_(self.implicit, mean=self.mean, std=self.std)
+
+    def forward(self, x):
+        return self.implicit * x
 
 class IDetect(nn.Module):
     stride = None  # strides computed during build
