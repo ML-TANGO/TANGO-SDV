@@ -18,6 +18,7 @@
   </v-card>
 </template>
 <script>
+import Swal from "sweetalert2";
 import { mapState, mapMutations } from "vuex";
 import { ProjectNamespace, ProjectMutations } from "@/store/modules/project";
 
@@ -52,12 +53,6 @@ export default {
     ...mapState(ProjectNamespace, ["project"])
   },
 
-  watch: {
-    interval() {
-      console.log("this.interval", this.interval);
-    }
-  },
-
   async mounted() {
     const cookie_info = new Cookies();
     const user_info = cookie_info.get("userinfo");
@@ -65,7 +60,7 @@ export default {
       this.projectInfo = await getProjectInfo(this.$route.params.id);
       this.SET_PROJECT(this.projectInfo);
       if (this.projectInfo.create_user !== user_info) {
-        this.$swal("잘못된접근입니다.");
+        Swal.fire("잘못된접근입니다.");
         this.$router.push("/");
       }
       let status = true;
@@ -81,7 +76,7 @@ export default {
       else if (!info?.deploy_user_edit || info?.deploy_user_edit === "") status = false;
       else if (!info?.deploy_output_method || info?.deploy_output_method === "") status = false;
       if (status === false) {
-        this.$swal("project를 완성해 주세요.");
+        Swal.fire("project를 완성해 주세요.");
         this.$router.push("/");
       }
 
@@ -109,18 +104,15 @@ export default {
         }
 
         const res = await setWorkflow(info.id, workflow);
-        console.log("res", res);
 
         this.projectInfo = {
           ...this.projectInfo,
           workflow: res.workflow
         };
         this.SET_PROJECT(this.projectInfo);
-
-        console.log("this.projectInfo", this.projectInfo);
       }
     } catch {
-      this.$swal("잘못된접근입니다.");
+      Swal.fire("잘못된접근입니다.");
       this.$router.push("/");
     }
   },
@@ -233,45 +225,43 @@ export default {
     },
 
     async onEdit() {
-      this.$swal
-        .fire({
-          title: `프로젝트를 수정 하시겠습니까?`,
-          text: "지금까지 진행된 내용이 사라집니다.",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#3085d6",
-          cancelButtonColor: "#d33",
-          confirmButtonText: "확인",
-          cancelButtonText: "취소"
-        })
-        .then(async result => {
-          if (result.isConfirmed) {
-            //선택한 target정보
-            if (this.projectInfo?.target_id && this.projectInfo.target_id !== "") {
-              const targetInfo = await getTargetInfo(this.projectInfo.target_id);
-              this.SET_SELECTED_TARGET(targetInfo);
-            }
-
-            //선택한 dataset 정보
-            if (this.projectInfo?.dataset && this.projectInfo.dataset !== "") {
-              const datasetList = await getDatasetListTango();
-              const datasetInfo = datasetList.find(q => q.name === this.projectInfo.dataset);
-              if (datasetInfo) this.SET_SELECTED_IMAGE(datasetInfo);
-            }
-
-            // 실행중인 컨테이너가 있다면 종료
-            if (
-              this.projectInfo?.container &&
-              this.projectInfo?.container !== "" &&
-              this.projectInfo?.container !== "init"
-            ) {
-              //Todo container 상태 추가
-              await stopContainer(this.projectInfo.container, this.projectInfo.create_user, this.projectInfo.id);
-            }
-          } else {
-            this.$EventBus.$emit("forcedTermination");
+      Swal.fire({
+        title: `프로젝트를 수정 하시겠습니까?`,
+        text: "지금까지 진행된 내용이 사라집니다.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "확인",
+        cancelButtonText: "취소"
+      }).then(async result => {
+        if (result.isConfirmed) {
+          //선택한 target정보
+          if (this.projectInfo?.target_id && this.projectInfo.target_id !== "") {
+            const targetInfo = await getTargetInfo(this.projectInfo.target_id);
+            this.SET_SELECTED_TARGET(targetInfo);
           }
-        });
+
+          //선택한 dataset 정보
+          if (this.projectInfo?.dataset && this.projectInfo.dataset !== "") {
+            const datasetList = await getDatasetListTango();
+            const datasetInfo = datasetList.find(q => q.name === this.projectInfo.dataset);
+            if (datasetInfo) this.SET_SELECTED_IMAGE(datasetInfo);
+          }
+
+          // 실행중인 컨테이너가 있다면 종료
+          if (
+            this.projectInfo?.container &&
+            this.projectInfo?.container !== "" &&
+            this.projectInfo?.container !== "init"
+          ) {
+            //Todo container 상태 추가
+            await stopContainer(this.projectInfo.container, this.projectInfo.create_user, this.projectInfo.id);
+          }
+        } else {
+          this.$EventBus.$emit("forcedTermination");
+        }
+      });
     }
   }
 };

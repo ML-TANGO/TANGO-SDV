@@ -45,7 +45,11 @@
           Close VISUALIZATION
         </div>
       </v-btn>
-      <v-banner v-model="open" style="padding: 0px !important" class="custom">
+      <v-banner
+        v-model="open"
+        style="padding: 0px !important"
+        class="custom"
+      >
         <v-card style="height: 1080px; overflow: none" class="mt-5">
           <iframe :src="HongIKVis2Code" title="내용" width="100%" height="100%"></iframe>
         </v-card>
@@ -84,6 +88,7 @@
   </div>
 </template>
 <script>
+import Swal from "sweetalert2";
 import { mapMutations, mapState } from "vuex";
 import { ProjectNamespace, ProjectMutations } from "@/store/modules/project";
 
@@ -153,6 +158,10 @@ export default {
     updateLog(log) {
       if (log?.message !== "\n") {
         if (log?.message?.trim()) {
+          if (this.vale.length > 50000) {
+            this.vale = this.vale.substring(10000);
+          }
+
           this.vale += log.message;
         }
       }
@@ -165,25 +174,23 @@ export default {
     start(container) {
       const containerName = DisplayName[container];
 
-      this.$swal
-        .fire({
-          title: `${containerName}를 실행하시겠습니까?`,
-          text: "",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#3085d6",
-          cancelButtonColor: "#d33",
-          confirmButtonText: "확인",
-          cancelButtonText: "취소"
-        })
-        .then(async result => {
-          if (result.isConfirmed) {
-            this.$emit("restart", container);
-            await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
-            await this.containerStartRequest(container);
-            this.SET_PROJECT({ project_type: ProjectType.MANUAL });
-          }
-        });
+      Swal.fire({
+        title: `${containerName}를 실행하시겠습니까?`,
+        text: "",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "확인",
+        cancelButtonText: "취소"
+      }).then(async result => {
+        if (result.isConfirmed) {
+          this.$emit("restart", container);
+          await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
+          await this.containerStartRequest(container);
+          this.SET_PROJECT({ project_type: ProjectType.MANUAL });
+        }
+      });
 
       this.SET_PROJECT({
         container: container
@@ -191,7 +198,6 @@ export default {
     },
 
     async immediateLaunch(container) {
-      console.log("immediateLaunch", container);
       this.$emit("restart", container);
       await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
       await this.containerStartRequest(container);
@@ -201,24 +207,22 @@ export default {
     async autoCreate() {
       // 실행중인 컨테이너가 있다면 종료
       if (this.projectInfo?.container && this.projectInfo?.container !== "" && this.projectInfo?.container !== "init") {
-        this.$swal
-          .fire({
-            title: `실행 중인 작업이 있습니다.`,
-            text: "다시 시작 하시겠습니까?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "확인",
-            cancelButtonText: "취소"
-          })
-          .then(async result => {
-            if (result.isConfirmed) {
-              await updateProjectType(this.projectInfo.id, ProjectType.AUTO);
-              await this.containerStartRequest("bms");
-              this.$emit("restart", "bms");
-            }
-          });
+        Swal.fire({
+          title: `실행 중인 작업이 있습니다.`,
+          text: "다시 시작 하시겠습니까?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "확인",
+          cancelButtonText: "취소"
+        }).then(async result => {
+          if (result.isConfirmed) {
+            await updateProjectType(this.projectInfo.id, ProjectType.AUTO);
+            await this.containerStartRequest("bms");
+            this.$emit("restart", "bms");
+          }
+        });
       } else {
         await updateProjectType(this.projectInfo.id, ProjectType.AUTO);
         await this.containerStartRequest("bms");
@@ -233,22 +237,20 @@ export default {
     async menualCreate() {
       // 실행중인 컨테이너가 있다면 종료
       if (this.projectInfo?.container && this.projectInfo?.container !== "" && this.projectInfo?.container !== "init") {
-        this.$swal
-          .fire({
-            title: `실행 중인 작업이 있습니다.`,
-            text: "다시 시작 하시겠습니까?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "확인",
-            cancelButtonText: "취소"
-          })
-          .then(async result => {
-            if (result.isConfirmed) {
-              await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
-            }
-          });
+        Swal.fire({
+          title: `실행 중인 작업이 있습니다.`,
+          text: "다시 시작 하시겠습니까?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "확인",
+          cancelButtonText: "취소"
+        }).then(async result => {
+          if (result.isConfirmed) {
+            await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
+          }
+        });
       } else {
         await updateProjectType(this.projectInfo.id, ProjectType.MANUAL);
       }
