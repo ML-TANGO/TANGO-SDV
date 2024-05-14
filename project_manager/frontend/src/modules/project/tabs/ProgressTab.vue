@@ -45,11 +45,7 @@
           Close VISUALIZATION
         </div>
       </v-btn>
-      <v-banner
-        v-model="open"
-        style="padding: 0px !important"
-        class="custom"
-      >
+      <v-banner v-model="open" style="padding: 0px !important" class="custom">
         <v-card style="height: 1080px; overflow: none" class="mt-5">
           <iframe :src="HongIKVis2Code" title="내용" width="100%" height="100%"></iframe>
         </v-card>
