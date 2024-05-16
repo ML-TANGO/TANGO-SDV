@@ -388,6 +388,8 @@ def pthlist(request):
                     p_ = params_['pad']
                     g_ = params_['groups']
                     a_ = params_['act']
+                    if isinstance(a_, nn.Module):
+                        a_ = f"nn.{str(a_)}"
                     args_ = [ch_, k_, s_, p_, g_, a_]
                 elif module_ == 'Concat':
                     d_ = params_['dim']
@@ -1036,8 +1038,11 @@ def startList(request):
                                     else:
                                         anchors = [list(range(args[1]*2))] * nl
                                 ch_ = []
+                                # ch_ = c1  ## yes, but we don't have to write them here
                                 if len(args)>2:
-                                    ch_ = args[2]
+                                    if args[2] != c1:
+                                        print(f"warining! channel mismatch.. {args[2]} != {c1} ")
+                                #     ch_ = args[2]
                                 params = (
                                     f"'nc': {nc} \n "
                                     f"'anchors': {anchors} \n "
