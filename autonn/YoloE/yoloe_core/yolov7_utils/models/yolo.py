@@ -789,6 +789,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         elif m is Foldcut:
             c2 = ch[f] // 2
         elif m in [Detect, IDetect, IAuxDetect, IBin, IKeypoint]:
+            if not args[-1]:
+                args.pop()
             args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
