@@ -9,6 +9,7 @@ import random
 
 from django.shortcuts import render
 from django.http import HttpResponse
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from pathlib import Path
@@ -29,31 +30,82 @@ def index(request):
 
 @api_view(['GET', 'POST'])
 def InfoList(request):
-    '''Information List for Neck NAS'''
-    if request.method == 'POST':
+    """
+    List 'Info' for all YOLOe instances, or create a new one
+    """
+    if request.method == 'GET':
+        infos = models.info.objects.all()
+        return Reponse(infos)
 
-        # Fetching the form data
-        uploadedFile = request.FILES["data_yaml"]
-        usrId = request.data['user_id']
-        prjId = request.data['project_id']
-        target = request.data['target']
-        task = request.data['task']
-        sts = request.data['status']
-        prcId = request.data['process_id']
+    elif request.method == 'POST':
+        try:
+            # Fetching the form data
+            uploadedFile = request.FILES["data_yaml"]
+            usrId = request.data['user_id']
+            prjId = request.data['project_id']
+            target = request.data['target']
+            task = request.data['task']
+            sts = request.data['status']
+            prcId = request.data['process_id']
 
-        # Saving the information in the database
-        updatedInfo = models.Info(
-            userid=usrId,
-            project_id=prjId,
-            target_device=target,
-            data_yaml=uploadedFile,
-            task=task,
-            status=sts,
-            process_id=prcId
-        )
-        updatedInfo.save()
+            # Saving the information in the database
+            newInfo = models.Info(
+                userid=usrId,
+                project_id=prjId,
+                target_device=target,
+                data_yaml=uploadedFile,
+                task=task,
+                status=sts,
+                process_id=prcId
+            )
+            newInfo.save()
+            return Response(newInfo, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(e, status=status.HTTP_400_BAD_REQEUST)
 
-        return render(request, "yoloe_core/index.html")
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def InfoDetail(request, pk):
+    """
+    Retrieve, update or delete an 'Info' for a certain YOLOe instance
+    """
+    try:
+        info = models.Info.objects.get(pk=pk)
+    except Info.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(info)
+
+    elif request.method == 'PUT':
+        try:
+            # Fetching the form data
+            uploadedFile = request.FILES["data_yaml"]
+            usrId = request.data['user_id']
+            prjId = request.data['project_id']
+            target = request.data['target']
+            task = request.data['task']
+            sts = request.data['status']
+            prcId = request.data['process_id']
+
+            # Saving the information in the database
+            info = models.Info(
+                userid=usrId,
+                project_id=prjId,
+                target_device=target,
+                data_yaml=uploadedFile,
+                task=task,
+                status=sts,
+                process_id=prcId
+            )
+            info.save()
+            return Response(info)
+        except Exception as e:
+            return Response(e, status=status.HTTP_400_BAD_REQEUST)
+
+    elif request.method == 'DELETE':
+        info.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
@@ -65,11 +117,11 @@ def start(request):
 
     # check user id & project id
     try:
-        nasinfo = models.Info.objects.get(userid=userid,
+        nasInfo = models.Info.objects.get(userid=userid,
                                           project_id=project_id)
     except models.Info.DoesNotExist:
-        print("new user or project")
-        nasinfo = models.Info(userid=userid,
+        print("new project")
+        nasInfo = models.Info(userid=userid,
                               project_id=project_id)
 
     data_yaml, proj_yaml = get_user_requirements(userid, project_id)
